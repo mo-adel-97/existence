@@ -136,13 +136,60 @@ const AttendancePage = () => {
     setAttendanceDialogOpen(false);
   };
 
-  const handleAttendanceSubmit = () => {
-    // Submit attendance data to API
-    console.log("Attendance submitted:", attendanceData);
-    setAttendanceDialogOpen(false);
+  // const handleAttendanceSubmit = () => {
+  //   // Submit attendance data to API
+  //   console.log("Attendance submitted:", attendanceData);
+  //   setAttendanceDialogOpen(false);
+  //   setSnackbarOpen(true);
+  //   setError(null);
+  // };
+const handleAttendanceSubmit = async () => {
+  if (!studentData || !studentData.studentName || !studentData.nationalId) {
+    setError("بيانات الطالب غير مكتملة");
     setSnackbarOpen(true);
-    setError(null);
+    return;
+  }
+  const currentUser = JSON.parse(localStorage.getItem("user"));
+  const payload = {
+    name: studentData.studentName, 
+    national_id: studentData.nationalId,
+    level_id: attendanceData.level,
+    diploma_id: attendanceData.diploma,
+    course: attendanceData.course,
+    attendance_date: new Date().toISOString().split("T")[0],
+    attendance_time: new Date().toTimeString().split(" ")[0],
+    created_by: currentUser.guid, 
   };
+
+
+  try {
+    const response = await fetch("http://localhost/students/add.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      setError(null);
+      setSnackbarOpen(true);
+    } else {
+      throw new Error(data.message);
+    }
+  } catch (err) {
+    setError("فشل في تسجيل الحضور: " + err.message);
+    setSnackbarOpen(true);
+  } finally {
+    setAttendanceDialogOpen(false);
+  }
+};
+
+
+
+
 
   const handleAttendanceChange = (e) => {
     const { name, value, type, checked } = e.target;
