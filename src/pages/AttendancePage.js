@@ -144,31 +144,34 @@ const AttendancePage = () => {
   //   setError(null);
   // };
 const handleAttendanceSubmit = async () => {
-  if (!studentData || !studentData.studentName || !studentData.nationalId) {
-    setError("بيانات الطالب غير مكتملة");
+  // Ensure all required fields are filled
+  if (!studentData || !studentData.studentName || !studentData.nationalId || !attendanceData.level || !attendanceData.diploma) {
+    setError("يرجى ملء جميع الحقول المطلوبة");
     setSnackbarOpen(true);
     return;
   }
+
   const currentUser = JSON.parse(localStorage.getItem("user"));
   const payload = {
-    name: studentData.studentName, 
+    name: studentData.studentName,
     national_id: studentData.nationalId,
     level_id: attendanceData.level,
     diploma_id: attendanceData.diploma,
     course: attendanceData.course,
-    attendance_date: new Date().toISOString().split("T")[0],
-    attendance_time: new Date().toTimeString().split(" ")[0],
-    created_by: currentUser.guid, 
+    attendance_date: new Date().toISOString().split("T")[0], // Format the date correctly
+    attendance_time: new Date().toTimeString().split(" ")[0], // Time format: HH:MM:SS
+    created_by: currentUser.guid,
   };
 
+  console.log("Payload being sent:", payload); // Debugging the payload
 
   try {
-    const response = await fetch("http://localhost/students/add.php", {
+    const response = await fetch("https://filesregsiteration.sstli.com/PostAttendent.php", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json();
@@ -186,8 +189,6 @@ const handleAttendanceSubmit = async () => {
     setAttendanceDialogOpen(false);
   }
 };
-
-
 
 
 
