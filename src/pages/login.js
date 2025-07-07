@@ -52,55 +52,60 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError("");
 
-    try {
-      const response = await fetch("http://192.168.50.170:5275/api/userinfo");
-      if (!response.ok) {
-        throw new Error("فشل في جلب بيانات المستخدمين");
+  try {
+    // Skip ngrok warning by adding headers
+    const response = await fetch("https://012d-130-164-183-113.ngrok-free.app/api/userinfo", {
+      headers: {
+        'ngrok-skip-browser-warning': 'true'
       }
-      const users = await response.json();
-
-      const authenticatedUser = users.find(
-        user => user.userName === username && user.password === password
-      );
-
-      if (authenticatedUser) {
-        // Save ALL user data to localStorage
-        localStorage.setItem("user", JSON.stringify({
-          id: authenticatedUser.id,
-          code: authenticatedUser.code,
-          guid: authenticatedUser.guid,
-          userName: authenticatedUser.userName,
-          password: authenticatedUser.password,
-          fullName: authenticatedUser.fullName,
-          staut_: authenticatedUser.staut_,
-          chkBranch: authenticatedUser.chkBranch,
-          branchGuid: authenticatedUser.branchGuid,
-          chkAmount: authenticatedUser.chkAmount,
-          chkOtherFess: authenticatedUser.chkOtherFess,
-          sellerGuid: authenticatedUser.sellerGuid,
-          chkTrainer: authenticatedUser.chkTrainer,
-          trainerGuid: authenticatedUser.trainerGuid,
-          branchForWork: authenticatedUser.branchForWork,
-          departGuid: authenticatedUser.departGuid,
-          userDepart: authenticatedUser.userDepart,
-          userJop: authenticatedUser.userJop
-        }));
-
-        navigate("/attendance");
-      } else {
-        setError("اسم المستخدم أو كلمة المرور غير صحيحة");
-      }
-    } catch (err) {
-      setError(err.message || "حدث خطأ أثناء محاولة تسجيل الدخول");
-    } finally {
-      setLoading(false);
+    });
+    if (!response.ok) {
+      throw new Error("فشل في جلب بيانات المستخدمين");
     }
-  };
+    const users = await response.json();
+
+    const authenticatedUser = users.find(
+      user => user.userName === username && user.password === password
+    );
+
+    if (authenticatedUser) {
+      // Save ALL user data to localStorage
+      localStorage.setItem("user", JSON.stringify({
+        id: authenticatedUser.id,
+        code: authenticatedUser.code,
+        guid: authenticatedUser.guid,
+        userName: authenticatedUser.userName,
+        password: authenticatedUser.password,
+        fullName: authenticatedUser.fullName,
+        staut_: authenticatedUser.staut_,
+        chkBranch: authenticatedUser.chkBranch,
+        branchGuid: authenticatedUser.branchGuid,
+        chkAmount: authenticatedUser.chkAmount,
+        chkOtherFess: authenticatedUser.chkOtherFess,
+        sellerGuid: authenticatedUser.sellerGuid,
+        chkTrainer: authenticatedUser.chkTrainer,
+        trainerGuid: authenticatedUser.trainerGuid,
+        branchForWork: authenticatedUser.branchForWork,
+        departGuid: authenticatedUser.departGuid,
+        userDepart: authenticatedUser.userDepart,
+        userJop: authenticatedUser.userJop
+      }));
+
+      navigate("/attendance");
+    } else {
+      setError("اسم المستخدم أو كلمة المرور غير صحيحة");
+    }
+  } catch (err) {
+    setError(err.message || "حدث خطأ أثناء محاولة تسجيل الدخول");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <ThemeProvider theme={theme}>

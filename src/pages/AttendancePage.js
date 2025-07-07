@@ -6,21 +6,20 @@ import {
   CssBaseline,
   ThemeProvider,
   createTheme,
-  Alert,  // Added Alert import
-  Button  // Added Button import
+  Alert,
+  Button,
+  CircularProgress
 } from "@mui/material";
 import { 
   Error, 
   CheckCircle,
-  Close  // Added Close icon import
+  Close
 } from "@mui/icons-material";
-// Rest of your code remains the same...
 import ProfessionalCard from "../Components/common/ProfessionalCard";
 import StudentSearchForm from "../Components/attendance/StudentSearchForm";
 import StudentInfoCard from "../Components/attendance/StudentInfoCard";
 import AttendanceDialog from "../Components/attendance/AttendanceDialog";
-
-// Create theme with Cairo font
+import AttendanceSidebar from "../Components/Sidebar/Sidebar"
 const theme = createTheme({
   typography: {
     fontFamily: '"Cairo", sans-serif',
@@ -69,6 +68,7 @@ const AttendancePage = () => {
   const [studentId, setStudentId] = useState("");
   const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -79,44 +79,49 @@ const AttendancePage = () => {
     course: "",
     confirmed: false
   });
+  const [selectedTab, setSelectedTab] = useState(0);
+
 
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    navigate("/");
-  };
-
-  // Sample data for select options
   const levels = ["المستوى الأول", "المستوى الثاني", "المستوى الثالث", "المستوى الرابع"];
   const diplomas = ["دبلوم الحاسب الآلي", "دبلوم الشبكات", "دبلوم البرمجة"];
   const courses = ["أساسيات الحاسب", "شبكات الحاسب", "برمجة الويب"];
 
-  const handleAttendance = async () => {
-    if (!studentId) {
-      setError("يرجى إدخال رقم الهوية");
-      setSnackbarOpen(true);
-      return;
-    }
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch(`http://192.168.50.170:5275/api/student/${studentId}`);
-      if (!response.ok) {
-        throw new Error("لم يتم العثور على الطالب");
+const handleAttendance = async () => {
+  if (!studentId) {
+    setError("يرجى إدخال رقم الهوية");
+    setSnackbarOpen(true);
+    return;
+  }
+
+  setLoading(true);
+  setError(null);
+
+  try {
+    const response = await fetch(`https://012d-130-164-183-113.ngrok-free.app/api/student/${studentId}`, {
+      headers: {
+        // Add these headers to bypass ngrok browser warning
+        'ngrok-skip-browser-warning': 'true',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       }
-      const data = await response.json();
-      setStudentData(data);
-      setSuccess(true);
-    } catch (error) {
-      setError("لم يتم العثور على الطالب");
-      setSnackbarOpen(true);
-    } finally {
-      setLoading(false);
+    });
+
+    if (!response.ok) {
+      throw new Error("لم يتم العثور على الطالب");
     }
-  };
+
+    const data = await response.json();
+    setStudentData(data);
+    setSuccess(true);
+  } catch (error) {
+    setError("لم يتم العثور على الطالب");
+    setSnackbarOpen(true);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleCloseSnackbar = () => {
     setSnackbarOpen(false);
@@ -136,63 +141,67 @@ const AttendancePage = () => {
     setAttendanceDialogOpen(false);
   };
 
-  // const handleAttendanceSubmit = () => {
-  //   // Submit attendance data to API
-  //   console.log("Attendance submitted:", attendanceData);
-  //   setAttendanceDialogOpen(false);
-  //   setSnackbarOpen(true);
-  //   setError(null);
-  // };
-const handleAttendanceSubmit = async () => {
-  // Ensure all required fields are filled
-  if (!studentData || !studentData.studentName || !studentData.nationalId || !attendanceData.level || !attendanceData.diploma) {
-    setError("يرجى ملء جميع الحقول المطلوبة");
-    setSnackbarOpen(true);
-    return;
-  }
-
-  const currentUser = JSON.parse(localStorage.getItem("user"));
-  const payload = {
-    name: studentData.studentName,
-    national_id: studentData.nationalId,
-    level_id: attendanceData.level,
-    diploma_id: attendanceData.diploma,
-    course: attendanceData.course,
-    attendance_date: new Date().toISOString().split("T")[0], // Format the date correctly
-    attendance_time: new Date().toTimeString().split(" ")[0], // Time format: HH:MM:SS
-    created_by: currentUser.guid,
-  };
-
-  console.log("Payload being sent:", payload); // Debugging the payload
-
-  try {
-    const response = await fetch("https://filesregsiteration.sstli.com/PostAttendent.php", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-      setError(null);
+  const handleAttendanceSubmit = async () => {
+    if (!studentData || !studentData.studentName || !studentData.nationalId || !attendanceData.level || !attendanceData.diploma) {
+      setError("يرجى ملء جميع الحقول المطلوبة");
       setSnackbarOpen(true);
-    } else {
-      throw new Error(data.message);
+      return;
     }
-  } catch (err) {
-    setError("فشل في تسجيل الحضور: " + err.message);
-    setSnackbarOpen(true);
-  } finally {
-    setAttendanceDialogOpen(false);
-  }
-};
 
+    setSubmitting(true);
+    setError(null);
+
+    const currentUser = JSON.parse(localStorage.getItem("user"));
+    const payload = {
+      name: studentData.studentName,
+      national_id: studentData.nationalId,
+      level_id: attendanceData.level,
+      diploma_id: attendanceData.diploma,
+      course: attendanceData.course,
+      attendance_date: new Date().toISOString().split("T")[0],
+      attendance_time: new Date().toTimeString().split(" ")[0],
+      created_by: currentUser.guid,
+    };
+
+    try {
+      const response = await fetch("https://filesregsiteration.sstli.com/PostAttendent.php", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "فشل في تسجيل الحضور");
+      }
+
+      if (data.success) {
+        setSuccess(true);
+        setSnackbarOpen(true);
+        setAttendanceDialogOpen(false);
+        setAttendanceData({
+          level: "",
+          diploma: "",
+          course: "",
+          confirmed: false
+        });
+      } else {
+        throw new Error(data.message || "فشل في تسجيل الحضور");
+      }
+    } catch (err) {
+      setError(err.message);
+      setSnackbarOpen(true);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
 
   const handleAttendanceChange = (e) => {
+
     const { name, value, type, checked } = e.target;
     setAttendanceData(prev => ({
       ...prev,
@@ -204,19 +213,20 @@ const handleAttendanceSubmit = async () => {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box
-        sx={{
-          textAlign: "right",
-          width: "100%",
-          margin: "0 auto",
-          padding: { xs: "20px", md: "40px" },
-          backgroundColor: "#f5f7fa",
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          fontFamily: '"Cairo", sans-serif'
-        }}
-      >
+  sx={{
+    textAlign: "right",
+    margin: "0 auto",
+    padding: { xs: "20px", md: "40px" },
+    backgroundColor: "#f5f7fa",
+    minHeight: "100vh",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    fontFamily: '"Cairo", sans-serif',
+    marginRight: "280px" // أضف دي
+  }}
+>
+
         <ProfessionalCard>
           {!studentData ? (
             <StudentSearchForm
@@ -244,6 +254,7 @@ const handleAttendanceSubmit = async () => {
           levels={levels}
           diplomas={diplomas}
           courses={courses}
+          submitting={submitting}
         />
 
         <Snackbar
@@ -252,19 +263,27 @@ const handleAttendanceSubmit = async () => {
           onClose={handleCloseSnackbar}
           anchorOrigin={{ vertical: "top", horizontal: "center" }}
         >
-          <Alert
-            onClose={handleCloseSnackbar}
-            severity={error ? "error" : "success"}
-            icon={error ? <Error /> : <CheckCircle />}
-            sx={{
-              width: "100%",
-              fontFamily: '"Cairo", sans-serif',
-              fontSize: "1rem",
-              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)"
-            }}
-          >
-            {error || "تم تسجيل حضور الطالب بنجاح"}
-          </Alert>
+<Alert
+  onClose={handleCloseSnackbar}
+  severity={error ? "error" : "success"}
+  icon={error ? <Error /> : <CheckCircle />}
+  sx={{
+    width: "100%",
+    fontFamily: '"Cairo", sans-serif',
+    fontSize: "1rem",
+    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)"
+  }}
+>
+  {error
+    ? error.includes("Failed to fetch")
+      ? "فشل الاتصال بالسيرفر"
+      : error.includes("not found")
+        ? "البيانات غير موجودة"
+        : "تأكد من ملئ جميع البيانات"
+    : "تم تسجيل حضور الطالب بنجاح"}
+</Alert>
+
+
         </Snackbar>
 
         <Box sx={{ 
@@ -274,26 +293,13 @@ const handleAttendanceSubmit = async () => {
           display: 'flex',
           alignItems: 'center'
         }}>
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={handleLogout}
-            startIcon={<Close />}
-            sx={{
-              borderRadius: "8px",
-              padding: "8px 16px",
-              fontWeight: 600,
-              fontFamily: '"Cairo", sans-serif',
-              "& .MuiButton-startIcon": {
-                marginRight: "8px",
-                marginLeft: "0px"
-              }
-            }}
-          >
-            تسجيل الخروج
-          </Button>
         </Box>
+              <AttendanceSidebar
+  selectedTab={selectedTab}
+  setSelectedTab={setSelectedTab}
+/>
       </Box>
+
     </ThemeProvider>
   );
 };

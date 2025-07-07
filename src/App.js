@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-d
 import AttendancePage from './pages/AttendancePage';
 import LoginPage from './pages/login';
 import "./App.css"
+import DailyAttendanceReport from "./pages/DailyAttendanceReport";
 
 // Private Route Component
 const PrivateRoute = ({ children }) => {
@@ -32,6 +33,14 @@ function App() {
             element={
               <PrivateRoute>
                 <AttendancePage />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/daily" 
+            element={
+              <PrivateRoute>
+                <DailyAttendanceReport />
               </PrivateRoute>
             } 
           />
