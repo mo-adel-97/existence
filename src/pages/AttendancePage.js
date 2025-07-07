@@ -99,7 +99,7 @@ const handleAttendance = async () => {
   setError(null);
 
   try {
-    const response = await fetch(`https://012d-130-164-183-113.ngrok-free.app/api/student/${studentId}`, {
+    const response = await fetch(`http://192.168.50.170:5275/api/student/${studentId}`, {
       headers: {
         // Add these headers to bypass ngrok browser warning
         'ngrok-skip-browser-warning': 'true',

@@ -59,7 +59,7 @@ const handleLogin = async (e) => {
 
   try {
     // Skip ngrok warning by adding headers
-    const response = await fetch("https://012d-130-164-183-113.ngrok-free.app/api/userinfo", {
+    const response = await fetch("http://192.168.50.170:5275/api/userinfo", {
       headers: {
         'ngrok-skip-browser-warning': 'true'
       }
