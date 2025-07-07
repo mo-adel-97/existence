@@ -88,6 +88,7 @@ const StyledTablePagination = styled(TablePagination)(({ theme }) => ({
 const DailyAttendanceReport = () => {
   const theme = useTheme();
   const [data, setData] = useState([]);
+  const [students, setStudents] = useState([]); // Add students state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -99,16 +100,48 @@ const DailyAttendanceReport = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
+  // Fetch students data from your API (similar to monthly report)
+  const fetchStudents = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (!user || !user.branchForWork) {
+        throw new Error('Branch information not found');
+      }
+      
+      const response = await fetch(`http://192.168.50.170:5275/api/StudentStudyInfo/by-branch/${user.branchForWork}`);
+      if (!response.ok) throw new Error('Failed to fetch students');
+      
+      const data = await response.json();
+      setStudents(data);
+      return data;
+    } catch (err) {
+      setError(err.message);
+      return [];
+    }
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
+      
+      // Fetch both students and attendance data
+      const [studentsData] = await Promise.all([
+        fetchStudents()
+      ]);
+      
       const response = await fetch('https://filesregsiteration.sstli.com/get_attendance.php');
       const result = await response.json();
 
-      if (result.success) {
+      if (result.success && studentsData.length > 0) {
+        // Get national IDs of students in current branch
+        const branchStudentIds = studentsData.map(student => student.nationalId);
+        
+        // Filter attendance data for today and branch students only
         const todayData = result.data.filter(item => 
-          item.attendance_date === dateFilter
+          item.attendance_date === dateFilter && 
+          branchStudentIds.includes(item.national_id)
         );
+        
         setData(todayData);
         
         const initialStatus = {};
@@ -117,7 +150,8 @@ const DailyAttendanceReport = () => {
         });
         setAttendanceStatus(initialStatus);
       } else {
-        throw new Error('فشل في جلب البيانات من الخادم');
+        setData([]);
+        setAttendanceStatus({});
       }
     } catch (err) {
       setError(err.message);
@@ -164,199 +198,201 @@ const DailyAttendanceReport = () => {
     setAnchorEl(null);
   };
 
-const handleExportWord = () => {
-  handleMenuClose();
+  const handleExportWord = () => {
+    handleMenuClose();
 
-  const doc = new Document({
-    description: "تقرير الحضور اليومي",
-    styles: {
-      paragraphStyles: [{
-        id: "arabicStyle",
-        name: "Arabic Style",
-        run: {
-          font: "Arial",
-          size: 24,
-          bold: true,
-          color: "000000",
-          rightToLeft: true
-        },
-        paragraph: {
-          alignment: AlignmentType.RIGHT,
-          spacing: { line: 400 }
-        }
-      }]
-    },
-    sections: [{
-      properties: {
-        direction: "rtl" // Set entire document to RTL
-      },
-      children: [
-        // Title and date header
-        new Paragraph({
-          text: "تقرير الحضور اليومي",
-          heading: HeadingLevel.HEADING_1,
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 400 },
-          bold: true,
-          size: 28
-        }),
-        new Paragraph({
-          text: `تاريخ التقرير: ${format(new Date(dateFilter), 'EEEE, d MMMM yyyy', { locale: arSA })}`,
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 800 },
-          size: 22
-        }),
+    // Get current user branch info
+    const user = JSON.parse(localStorage.getItem('user'));
+    const branchName = user?.branchForWork || 'غير محدد';
 
-        // Main table - now larger and with inverted columns
-        new DocxTable({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          margins: {
-            top: 400,
-            bottom: 400,
-            left: 400,
-            right: 400,
+    const doc = new Document({
+      description: "تقرير الحضور اليومي",
+      styles: {
+        paragraphStyles: [{
+          id: "arabicStyle",
+          name: "Arabic Style",
+          run: {
+            font: "Arial",
+            size: 24,
+            bold: true,
+            color: "000000",
+            rightToLeft: true
           },
-          columnWidths: [
-            3000, // Course columns (right side - now first)
-            ...Object.keys(groupedDataArray[0]?.courses || {}).map(() => 2000),
-            2500, // Student info columns (left side)
-            2000,
-            2000,
-            2000
-          ],
-          rows: [
-            // Header row with inverted columns (courses first)
-            new DocxRow({
-              children: [
-                // Course headers (right side - now first)
-                ...Object.keys(groupedDataArray[0]?.courses || {}).map(course => 
-                  new DocxCell({
-                    children: [new Paragraph({
-                      text: course,
-                      bold: true,
-                      size: 20
-                    })],
-                    shading: {
-                      fill: "4472C4", // Blue background
-                    },
-                    margins: {
-                      top: 200,
-                      bottom: 200,
-                      left: 200,
-                      right: 200,
-                    }
-                  })
-                ).reverse(),
-                
-                // Student info headers (left side)
-                new DocxCell({
-                  children: [new Paragraph({
-                    text: "الدبلوم",
-                    bold: true,
-                    size: 20
-                  })],
-                  shading: {
-                    fill: "4472C4",
-                  }
-                }),
-                new DocxCell({
-                  children: [new Paragraph({
-                    text: "المستوى", 
-                    bold: true,
-                    size: 20
-                  })],
-                  shading: {
-                    fill: "4472C4",
-                  }
-                }),
-                new DocxCell({
-                  children: [new Paragraph({
-                    text: "رقم الهوية",
-                    bold: true,
-                    size: 20
-                  })],
-                  shading: {
-                    fill: "4472C4",
-                  }
-                }),
-                new DocxCell({
-                  children: [new Paragraph({
-                    text: "الاسم",
-                    bold: true, 
-                    size: 20
-                  })],
-                  shading: {
-                    fill: "4472C4",
-                  }
-                })
-              ]
-            }),
-            
-            // Student data rows with inverted columns
-            ...groupedDataArray.map(({ student, courses }) => 
+          paragraph: {
+            alignment: AlignmentType.RIGHT,
+            spacing: { line: 400 }
+          }
+        }]
+      },
+      sections: [{
+        properties: {
+          direction: "rtl"
+        },
+        children: [
+          new Paragraph({
+            text: "تقرير الحضور اليومي",
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 400 },
+            bold: true,
+            size: 28
+          }),
+          new Paragraph({
+            text: `تاريخ التقرير: ${format(new Date(dateFilter), 'EEEE, d MMMM yyyy', { locale: arSA })}`,
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200 },
+            size: 22
+          }),
+          // new Paragraph({
+          //   text: `الفرع: ${branchName}`,
+          //   alignment: AlignmentType.CENTER,
+          //   spacing: { after: 800 },
+          //   size: 20
+          // }),
+
+          new DocxTable({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            margins: {
+              top: 400,
+              bottom: 400,
+              left: 400,
+              right: 400,
+            },
+            columnWidths: [
+              3000,
+              ...Object.keys(groupedDataArray[0]?.courses || {}).map(() => 2000),
+              2500,
+              2000,
+              2000,
+              2000
+            ],
+            rows: [
               new DocxRow({
                 children: [
-                  // Attendance status cells (courses first - right side)
-                  ...Object.keys(courses).map(course => 
-                    new DocxCell({ 
+                  ...Object.keys(groupedDataArray[0]?.courses || {}).map(course => 
+                    new DocxCell({
                       children: [new Paragraph({
-                        text: attendanceStatus[`${student.national_id}-${course}`] ? "حاضر" : "غائب",
-                        size: 18
+                        text: course,
+                        bold: true,
+                        size: 20
                       })],
+                      shading: {
+                        fill: "4472C4",
+                      },
                       margins: {
-                        top: 150,
-                        bottom: 150,
-                        left: 150,
-                        right: 150,
+                        top: 200,
+                        bottom: 200,
+                        left: 200,
+                        right: 200,
                       }
                     })
                   ).reverse(),
                   
-                  // Student info cells (left side)
-                  new DocxCell({ 
+                  new DocxCell({
                     children: [new Paragraph({
-                      text: student.diploma_id,
-                      size: 18
-                    })]
+                      text: "الدبلوم",
+                      bold: true,
+                      size: 20
+                    })],
+                    shading: {
+                      fill: "4472C4",
+                    }
                   }),
-                  new DocxCell({ 
+                  new DocxCell({
                     children: [new Paragraph({
-                      text: student.level_id,
-                      size: 18
-                    })]
+                      text: "المستوى", 
+                      bold: true,
+                      size: 20
+                    })],
+                    shading: {
+                      fill: "4472C4",
+                    }
                   }),
-                  new DocxCell({ 
+                  new DocxCell({
                     children: [new Paragraph({
-                      text: student.national_id,
-                      size: 18
-                    })]
+                      text: "رقم الهوية",
+                      bold: true,
+                      size: 20
+                    })],
+                    shading: {
+                      fill: "4472C4",
+                    }
                   }),
-                  new DocxCell({ 
+                  new DocxCell({
                     children: [new Paragraph({
-                      text: student.name,
-                      size: 18
-                    })]
+                      text: "الاسم",
+                      bold: true, 
+                      size: 20
+                    })],
+                    shading: {
+                      fill: "4472C4",
+                    }
                   })
                 ]
-              })
-            )
-          ]
-        })
-      ]
-    }]
-  });
+              }),
+              
+              ...groupedDataArray.map(({ student, courses }) => 
+                new DocxRow({
+                  children: [
+                    ...Object.keys(courses).map(course => 
+                      new DocxCell({ 
+                        children: [new Paragraph({
+                          text: attendanceStatus[`${student.national_id}-${course}`] ? "حاضر" : "غائب",
+                          size: 18,
+                          color: attendanceStatus[`${student.national_id}-${course}`] ? "2E7D32" : "D32F2F"
+                        })],
+                        margins: {
+                          top: 150,
+                          bottom: 150,
+                          left: 150,
+                          right: 150,
+                        }
+                      })
+                    ).reverse(),
+                    
+                    new DocxCell({ 
+                      children: [new Paragraph({
+                        text: student.diploma_id,
+                        size: 18
+                      })]
+                    }),
+                    new DocxCell({ 
+                      children: [new Paragraph({
+                        text: student.level_id,
+                        size: 18
+                      })]
+                    }),
+                    new DocxCell({ 
+                      children: [new Paragraph({
+                        text: student.national_id,
+                        size: 18
+                      })]
+                    }),
+                    new DocxCell({ 
+                      children: [new Paragraph({
+                        text: student.name,
+                        size: 18
+                      })]
+                    })
+                  ]
+                })
+              )
+            ]
+          })
+        ]
+      }]
+    });
 
-  // Generate and download the Word file
-  Packer.toBlob(doc).then(blob => {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `تقرير_حضور_${format(new Date(dateFilter), 'yyyy-MM-dd')}.docx`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  });
-};
+    Packer.toBlob(doc).then(blob => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `تقرير_حضور_${format(new Date(dateFilter), 'yyyy-MM-dd')}_${branchName}.docx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+  };
 
   const filteredData = data.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -408,6 +444,9 @@ const handleExportWord = () => {
               <Typography variant="subtitle1" sx={{ fontFamily: '"Cairo", sans-serif' }}>
                 {format(new Date(dateFilter), 'EEEE, d MMMM yyyy', { locale: arSA })}
               </Typography>
+              <Typography variant="caption" sx={{ fontFamily: '"Cairo", sans-serif', opacity: 0.8 }}>
+                الفرع: {JSON.parse(localStorage.getItem('user'))?.branchForWork || 'غير محدد'}
+              </Typography>
             </Box>
             <Box sx={{ flexGrow: 1 }} />
             
@@ -425,6 +464,7 @@ const handleExportWord = () => {
                 color="success"
                 startIcon={<DownloadIcon />}
                 onClick={handleExportWord}
+                disabled={groupedDataArray.length === 0}
                 sx={{
                   fontFamily: '"Cairo", sans-serif',
                   fontWeight: 600,
@@ -514,7 +554,7 @@ const handleExportWord = () => {
               fontFamily: '"Cairo", sans-serif',
               color: theme.palette.text.secondary
             }}>
-              لا توجد سجلات حضور لهذا اليوم
+              لا توجد سجلات حضور لهذا اليوم في هذا الفرع
             </Typography>
           </Paper>
         ) : (
