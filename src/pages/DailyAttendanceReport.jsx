@@ -88,7 +88,8 @@ const StyledTablePagination = styled(TablePagination)(({ theme }) => ({
 const DailyAttendanceReport = () => {
   const theme = useTheme();
   const [data, setData] = useState([]);
-  const [students, setStudents] = useState([]); // Add students state
+  const [students, setStudents] = useState([]);
+  const [branchName, setBranchName] = useState('جارٍ التحميل...');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -100,7 +101,28 @@ const DailyAttendanceReport = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
-  // Fetch students data from your API (similar to monthly report)
+  const fetchBranchName = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user'));
+      
+      if (!user || !user.guid) {
+        throw new Error('User GUID not found');
+      }
+      
+      const response = await fetch(`http://192.168.50.170:5122/api/Trainer/UserBranchForWork?userGuid=${user.guid}`);
+      if (!response.ok) throw new Error('Failed to fetch branch name');
+      
+      const data = await response.json();
+           console.log(data);
+           console.log(data[0].brEName);
+      setBranchName(data[0].brEName);
+       
+    } catch (err) {
+      console.error('Error fetching branch name:', err);
+      setBranchName('غير محدد');
+    }
+  };
+
   const fetchStudents = async () => {
     try {
       const user = JSON.parse(localStorage.getItem('user'));
@@ -124,7 +146,7 @@ const DailyAttendanceReport = () => {
     try {
       setLoading(true);
       
-      // Fetch both students and attendance data
+      await fetchBranchName();
       const [studentsData] = await Promise.all([
         fetchStudents()
       ]);
@@ -133,10 +155,8 @@ const DailyAttendanceReport = () => {
       const result = await response.json();
 
       if (result.success && studentsData.length > 0) {
-        // Get national IDs of students in current branch
         const branchStudentIds = studentsData.map(student => student.nationalId);
         
-        // Filter attendance data for today and branch students only
         const todayData = result.data.filter(item => 
           item.attendance_date === dateFilter && 
           branchStudentIds.includes(item.national_id)
@@ -201,10 +221,6 @@ const DailyAttendanceReport = () => {
   const handleExportWord = () => {
     handleMenuClose();
 
-    // Get current user branch info
-    const user = JSON.parse(localStorage.getItem('user'));
-    const branchName = user?.branchForWork || 'غير محدد';
-
     const doc = new Document({
       description: "تقرير الحضور اليومي",
       styles: {
@@ -243,12 +259,12 @@ const DailyAttendanceReport = () => {
             spacing: { after: 200 },
             size: 22
           }),
-          // new Paragraph({
-          //   text: `الفرع: ${branchName}`,
-          //   alignment: AlignmentType.CENTER,
-          //   spacing: { after: 800 },
-          //   size: 20
-          // }),
+          new Paragraph({
+            text: `الفرع: ${branchName}`,
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 800 },
+            size: 20
+          }),
 
           new DocxTable({
             width: { size: 100, type: WidthType.PERCENTAGE },
@@ -445,7 +461,7 @@ const DailyAttendanceReport = () => {
                 {format(new Date(dateFilter), 'EEEE, d MMMM yyyy', { locale: arSA })}
               </Typography>
               <Typography variant="caption" sx={{ fontFamily: '"Cairo", sans-serif', opacity: 0.8 }}>
-                الفرع: {JSON.parse(localStorage.getItem('user'))?.branchForWork || 'غير محدد'}
+                الفرع: {branchName}
               </Typography>
             </Box>
             <Box sx={{ flexGrow: 1 }} />
