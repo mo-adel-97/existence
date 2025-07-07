@@ -5,7 +5,6 @@ import {
   Tabs,
   Tab,
   Typography,
-  Divider,
   Button,
   useTheme,
   styled
@@ -14,6 +13,7 @@ import {
   Home as HomeIcon,
   Today as DailyIcon,
   CalendarMonth as MonthlyIcon,
+  Class as CourseIcon,
   ManageAccounts as ManageAccountsIcon,
   Logout as LogoutIcon
 } from "@mui/icons-material";
@@ -23,9 +23,11 @@ const drawerWidth = 280;
 
 const StyledTab = styled(Tab)(({ theme }) => ({
   minHeight: 48,
-  padding: theme.spacing(1.5, 3),
+  padding: theme.spacing(1.5, 2),
   margin: theme.spacing(0.5, 1.5),
   borderRadius: theme.shape.borderRadius,
+  flexDirection: 'row', // Reverse icon and text direction
+  justifyContent: 'flex-start', // Align to right
   gap: theme.spacing(2),
   transition: 'all 0.2s ease-out',
   '&.Mui-selected': {
@@ -50,10 +52,11 @@ const AttendanceSidebar = () => {
 
   const selectedTab = location.pathname === "/attendance" ? 0 : 
                      location.pathname === "/daily" ? 1 : 
-                     location.pathname === "/monthly" ? 2 : 0;
+                     location.pathname === "/monthly" ? 2 :
+                     location.pathname === "/courses" ? 3 : 0;
 
   const handleTabChange = (_, newValue) => {
-    const routes = ["/attendance", "/daily", "/monthly"];
+    const routes = ["/attendance", "/daily", "/monthly", "/courses"];
     navigate(routes[newValue]);
   };
 
@@ -86,7 +89,7 @@ const AttendanceSidebar = () => {
         borderBottom: `1px solid ${theme.palette.divider}`,
         backgroundColor: theme.palette.background.paper
       }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexDirection: 'row-reverse' }}>
           <ManageAccountsIcon 
             sx={{ 
               fontSize: 32,
@@ -129,14 +132,12 @@ const AttendanceSidebar = () => {
                 fontFamily='"Cairo", sans-serif'
                 sx={{ 
                   fontSize: '0.9rem',
-                  textAlign: 'right'
                 }}
               >
                 الرئيسية
               </Typography>
             }
             icon={<HomeIcon fontSize="small" />}
-            iconPosition="start"
           />
           <StyledTab
             label={
@@ -145,14 +146,12 @@ const AttendanceSidebar = () => {
                 fontFamily='"Cairo", sans-serif'
                 sx={{ 
                   fontSize: '0.9rem',
-                  textAlign: 'right'
                 }}
               >
                 التقرير اليومي
               </Typography>
             }
             icon={<DailyIcon fontSize="small" />}
-            iconPosition="start"
           />
           <StyledTab
             label={
@@ -161,14 +160,26 @@ const AttendanceSidebar = () => {
                 fontFamily='"Cairo", sans-serif'
                 sx={{ 
                   fontSize: '0.9rem',
-                  textAlign: 'right'
                 }}
               >
                 التقرير الشهري
               </Typography>
             }
             icon={<MonthlyIcon fontSize="small" />}
-            iconPosition="start"
+          />
+          <StyledTab
+            label={
+              <Typography 
+                variant="subtitle1"
+                fontFamily='"Cairo", sans-serif'
+                sx={{ 
+                  fontSize: '0.9rem',
+                }}
+              >
+                التقرير الحضوري للمقررات
+              </Typography>
+            }
+            icon={<CourseIcon fontSize="small" />}
           />
         </Tabs>
       </Box>
