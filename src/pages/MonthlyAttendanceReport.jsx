@@ -97,7 +97,6 @@ const MonthlyAttendanceReport = () => {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [branchName, setBranchName] = useState('جارٍ التحميل...');
 
-  // Get current month dates
   const monthStart = startOfMonth(new Date(selectedMonth));
   const monthEnd = endOfMonth(new Date(selectedMonth));
   const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
@@ -120,8 +119,6 @@ const MonthlyAttendanceReport = () => {
       setBranchName('غير محدد');
     }
   };
-
-  // Fetch students data from your API
   const fetchStudents = async () => {
     try {
       await fetchBranchName();
@@ -132,7 +129,7 @@ const MonthlyAttendanceReport = () => {
       
       const response = await fetch(`http://192.168.50.170:5275/api/StudentStudyInfo/by-branch/${user.branchForWork}`);
       if (!response.ok) throw new Error('Failed to fetch students');
-      
+  
       const data = await response.json();
       setStudents(data);
     } catch (err) {
@@ -140,7 +137,6 @@ const MonthlyAttendanceReport = () => {
     }
   };
 
-  // Fetch attendance data
   const fetchAttendanceData = async () => {
     try {
       await fetchBranchName();
@@ -206,38 +202,57 @@ const MonthlyAttendanceReport = () => {
     setSelectedCourse(null);
   };
 
-  const handleSendToWhatsApp = (student) => {
-    if (!student) return;
+const handleSendToWhatsApp = async (student) => {
+  if (!student) return;
+
+  try {
+    const response = await fetch(`http://192.168.50.170:5275/api/student/${student.nationalId}`);
+    if (!response.ok) throw new Error('Failed to fetch student data');
+    
+    const studentData = await response.json();
+    
+    const formatWhatsAppNumber = (phone) => {
+      if (!phone) return null;
+      const cleaned = phone.replace(/\D/g, '');
+      
+      if (cleaned.startsWith('966') && cleaned.length === 12) {
+        return `+${cleaned}`;
+      } else if (cleaned.startsWith('05') && cleaned.length === 10) {
+        return `+966${cleaned.substring(1)}`;
+      } else if (cleaned.startsWith('5') && cleaned.length === 9) {
+        return `+966${cleaned}`;
+      }
+      return null;
+    };
+
+    const whatsappNumber = formatWhatsAppNumber(studentData.studentTel);
     
     const attendanceDetails = getStudentAttendanceDetails(student.nationalId);
     const presentDays = attendanceDetails.filter(day => day.attended).length;
     const totalDays = monthDays.length;
     const percentage = calculateAttendancePercentage(student.nationalId);
 
-    let message = `تقرير الحضور الشهري للطالب\n`;
+    let message = ` تقرير الحضور الشهري \n`;
     message += `━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-    message += `الشهر: ${format(new Date(selectedMonth), 'MMMM yyyy', { locale: arSA })}\n`;
-    message += `الفرع التدريبي: ${branchName}\n\n`;
-
-    message += `معلومات الطالب\n`;
-    message += `———————————————\n`;
-    message += `الاسم الكامل: ${student.studentName}\n`;
-    message += `رقم الهوية الوطنية: ${student.nationalId}\n`;
-    message += `المستوى التدريبي: ${student.levelName}\n`;
-    message += `البرنامج / الدبلوم: ${student.diplomName}\n\n`;
-
-    message += `ملخص الحضور\n`;
-    message += `———————————————\n`;
-    message += `عدد أيام الحضور: ${presentDays} من ${totalDays}\n`;
-    message += `نسبة الحضور: ${percentage}%\n\n`;
-
-    message += `الأيام الحاضرة:\n`;
-    message += `———————————————\n`;
-
-    if (presentDays === 0) {
-      message += `لا توجد أيام حضور لهذا الشهر.\n\n`;
-    } else {
+    message += ` الشهر: ${format(new Date(selectedMonth), 'MMMM yyyy', { locale: arSA })}\n`;
+    message += ` الفرع: ${branchName}\n\n`;
+    
+    message += ` معلومات الطالب \n`;
+    message += `------------------\n`;
+    message += ` الاسم: ${student.studentName}\n`;
+    message += ` الهوية: ${student.nationalId}\n`;
+    message += ` المستوى: ${student.levelName}\n`;
+    message += ` الدبلوم: ${student.diplomName}\n\n`;
+    
+    message += `*ملخص الحضور*\n`;
+    message += `------------------\n`;
+    message += ` أيام الحضور: ${presentDays}\n`;
+    message += ` أيام الغياب: ${totalDays - presentDays}\n`;
+    message += ` النسبة: ${percentage}%\n\n`;
+    
+    if (presentDays > 0) {
+      message += `الأيام الحاضرة:\n`;
+      message += `------------------\n`;
       attendanceDetails
         .filter(day => day.attended)
         .forEach((day, index) => {
@@ -246,21 +261,47 @@ const MonthlyAttendanceReport = () => {
             format(parseISO(a.attendance_date), 'yyyy-MM-dd') === format(day.date, 'yyyy-MM-dd')
           );
           
-          message += `${index + 1}. ${day.formattedDate}`;
+          message += `${index + 1}. ${day.formattedDate}\n`;
           if (courseAttendance) {
-            message += ` (${courseAttendance.course} - ${courseAttendance.attendance_time})`;
+            message += `   - المادة: ${courseAttendance.course}\n`;
+            message += `   - الوقت: ${courseAttendance.attendance_time}\n\n`;
           }
-          message += `\n`;
         });
     }
 
-    message += `\nملاحظة: تم إعداد هذا التقرير تلقائيًا من خلال نظام إدارة الحضور.\n`;
+    message += `_ملاحظة:_ هذا تقرير تلقائي من نظام الحضور\n`;
     message += `━━━━━━━━━━━━━━━━━━━━━━━`;
 
     const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank');
-  };
+    const studentUrl = whatsappNumber 
+      ? `https://wa.me/${whatsappNumber}?text=${encodedMessage}`
+      : null;
+
+    const adminNumber = "966501234567"; 
+    const trackingMessage = ` تم إرسال تقرير حضور لـ ${student.studentName}\n` +
+      `التاريخ: ${format(new Date(), 'yyyy/MM/dd HH:mm', { locale: arSA })}`;
+    const trackingUrl = `https://wa.me/${adminNumber}?text=${encodeURIComponent(trackingMessage)}`;
+
+    if (studentUrl) {
+      window.open(studentUrl, '_blank');
+    } else {
+      alert('لا يوجد رقم واتساب مسجل للطالب');
+    }
+    
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = trackingUrl;
+    document.body.appendChild(iframe);
+    setTimeout(() => document.body.removeChild(iframe), 1000);
+
+  } catch (error) {
+    console.error('WhatsApp Error:', error);
+    alert('حدث خطأ أثناء إرسال التقرير');
+    
+    const message = `تقرير الحضور الشهري للطالب ${student.studentName}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+  }
+};
 
   const handleExportWord = () => {
     const doc = new Document({
