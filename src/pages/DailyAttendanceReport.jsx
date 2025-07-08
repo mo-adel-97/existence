@@ -15,13 +15,17 @@ import {
   InputAdornment,
   IconButton,
   Avatar,
-  Checkbox,
   useTheme,
   styled,
   TablePagination,
   Button,
-  Menu,
-  MenuItem
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Grid,
+  Chip,
+  Divider
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -31,8 +35,9 @@ import {
   Badge as IdIcon,
   School as LevelIcon,
   MenuBook as DiplomaIcon,
-  Class as CourseIcon,
-  Download as DownloadIcon
+  Visibility as ViewIcon,
+  Download as DownloadIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { arSA } from 'date-fns/locale';
@@ -95,11 +100,10 @@ const DailyAttendanceReport = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedTab, setSelectedTab] = useState(0);
-  const [attendanceStatus, setAttendanceStatus] = useState({});
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(15);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const open = Boolean(anchorEl);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
 
   const fetchBranchName = async () => {
     try {
@@ -113,10 +117,7 @@ const DailyAttendanceReport = () => {
       if (!response.ok) throw new Error('Failed to fetch branch name');
       
       const data = await response.json();
-           console.log(data);
-           console.log(data[0].brEName);
       setBranchName(data[0].brEName);
-       
     } catch (err) {
       console.error('Error fetching branch name:', err);
       setBranchName('غير محدد');
@@ -163,15 +164,8 @@ const DailyAttendanceReport = () => {
         );
         
         setData(todayData);
-        
-        const initialStatus = {};
-        todayData.forEach(item => {
-          initialStatus[`${item.national_id}-${item.course}`] = true;
-        });
-        setAttendanceStatus(initialStatus);
       } else {
         setData([]);
-        setAttendanceStatus({});
       }
     } catch (err) {
       setError(err.message);
@@ -194,13 +188,6 @@ const DailyAttendanceReport = () => {
     setPage(0);
   };
 
-  const handleAttendanceChange = (nationalId, course) => {
-    setAttendanceStatus(prev => ({
-      ...prev,
-      [`${nationalId}-${course}`]: !prev[`${nationalId}-${course}`]
-    }));
-  };
-
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -210,17 +197,17 @@ const DailyAttendanceReport = () => {
     setPage(0);
   };
 
-  const handleMenuClick = (event) => {
-    setAnchorEl(event.currentTarget);
+  const handleViewDetails = (student) => {
+    setSelectedStudent(student);
+    setOpenDialog(true);
   };
 
-  const handleMenuClose = () => {
-    setAnchorEl(null);
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setSelectedStudent(null);
   };
 
   const handleExportWord = () => {
-    handleMenuClose();
-
     const doc = new Document({
       description: "تقرير الحضور اليومي",
       styles: {
@@ -353,9 +340,9 @@ const DailyAttendanceReport = () => {
                     ...Object.keys(courses).map(course => 
                       new DocxCell({ 
                         children: [new Paragraph({
-                          text: attendanceStatus[`${student.national_id}-${course}`] ? "حاضر" : "غائب",
+                          text: "حاضر",
                           size: 18,
-                          color: attendanceStatus[`${student.national_id}-${course}`] ? "2E7D32" : "D32F2F"
+                          color: "2E7D32"
                         })],
                         margins: {
                           top: 150,
@@ -415,7 +402,7 @@ const DailyAttendanceReport = () => {
     item.national_id.includes(searchTerm)
   );
 
- const groupedData = filteredData.reduce((acc, item) => {
+  const groupedData = filteredData.reduce((acc, item) => {
     if (!acc[item.national_id]) {
       acc[item.national_id] = {
         student: {
@@ -428,7 +415,6 @@ const DailyAttendanceReport = () => {
       };
     }
     
-    // Store each course with its attendance data
     acc[item.national_id].courses[item.course] = {
       attendance_time: item.attendance_time,
       attendance_date: item.attendance_date
@@ -437,7 +423,6 @@ const DailyAttendanceReport = () => {
     return acc;
   }, {});
 
-  // Get all unique courses across all students for headers
   const allCourses = Array.from(
     new Set(
       filteredData.map(item => item.course)
@@ -449,6 +434,17 @@ const DailyAttendanceReport = () => {
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
   );
+
+  // Get courses for selected student
+  const getStudentCourses = (nationalId) => {
+    return data
+      .filter(item => item.national_id === nationalId)
+      .map(item => ({
+        course: item.course,
+        time: item.attendance_time,
+        date: item.attendance_date
+      }));
+  };
 
   return (
     <Box>
@@ -592,96 +588,87 @@ const DailyAttendanceReport = () => {
           </Paper>
         ) : (
           <>
-              <TableContainer component={Paper} elevation={0} sx={{ 
-        border: `1px solid ${theme.palette.divider}`,
-        borderRadius: theme.shape.borderRadius,
-        overflow: 'hidden'
-      }}>
-        <Table sx={{ minWidth: 750 }} aria-label="attendance table">
-          <TableHead sx={{ bgcolor: theme.palette.grey[100] }}>
-            <TableRow>
-              <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>الطالب</StyledTableCell>
-              <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>رقم الهوية</StyledTableCell>
-              <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>المستوى</StyledTableCell>
-              <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>الدبلوم</StyledTableCell>
-              {allCourses.map(course => (
-                <StyledTableCell key={course} sx={{ fontWeight: 700, textAlign: "center" }}>
-                  {course}
-                  <Typography variant="caption" display="block" sx={{ fontWeight: 400 }}>
-                    وقت الحضور
-                  </Typography>
-                </StyledTableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {paginatedData.map(({ student, courses }) => (
-              <StyledTableRow key={student.national_id}>
-                <StyledTableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Avatar
-                      sx={{
-                        bgcolor: theme.palette.primary.light,
-                        width: 36,
-                        height: 36,
-                        mr: 2,
-                        color: theme.palette.primary.dark,
-                      }}
-                    >
-                      <PersonIcon />
-                    </Avatar>
-                    <Typography sx={{ fontFamily: '"Cairo", sans-serif' }}>
-                      {student.name}
-                    </Typography>
-                  </Box>
-                </StyledTableCell>
-                <StyledTableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <IdIcon color="action" sx={{ ml: 1 }} />
-                    {student.national_id}
-                  </Box>
-                </StyledTableCell>
-                <StyledTableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <LevelIcon color="action" sx={{ ml: 1 }} />
-                    {student.level_id}
-                  </Box>
-                </StyledTableCell>
-                <StyledTableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <DiplomaIcon color="action" sx={{ ml: 1 }} />
-                    {student.diploma_id}
-                  </Box>
-                </StyledTableCell>
-                
-                {allCourses.map(course => {
-                  const attendance = courses[course];
-                  return (
-                    <StyledTableCell key={`${student.national_id}-${course}`} sx={{ textAlign: "center" }}>
-                      {attendance ? (
-                        <>
-                          <Checkbox
-                            checked={attendanceStatus[`${student.national_id}-${course}`] !== false}
-                            onChange={() => handleAttendanceChange(student.national_id, course)}
-                            color="primary"
-                          />
-                          <Typography variant="body2" sx={{ fontSize: '0.75rem', color: theme.palette.text.secondary }}>
-                            {attendance.attendance_time}
+            <TableContainer component={Paper} elevation={0} sx={{ 
+              border: `1px solid ${theme.palette.divider}`,
+              borderRadius: theme.shape.borderRadius,
+              overflow: 'hidden'
+            }}>
+              <Table sx={{ minWidth: 750 }} aria-label="attendance table">
+                <TableHead sx={{ bgcolor: theme.palette.grey[100] }}>
+                  <TableRow>
+                    <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>الطالب</StyledTableCell>
+                    <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>رقم الهوية</StyledTableCell>
+                    <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>المستوى</StyledTableCell>
+                    <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>الدبلوم</StyledTableCell>
+                    {/* <StyledTableCell sx={{ fontWeight: 700, textAlign: "center" }}>المواد الحاضرة</StyledTableCell> */}
+                    <StyledTableCell sx={{ fontWeight: 700, textAlign: "center" }}>تفاصيل الحضور</StyledTableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paginatedData.map(({ student, courses }) => (
+                    <StyledTableRow key={student.national_id}>
+                      <StyledTableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Avatar
+                            sx={{
+                              bgcolor: theme.palette.primary.light,
+                              width: 36,
+                              height: 36,
+                              mr: 2,
+                              color: theme.palette.primary.dark,
+                            }}
+                          >
+                            <PersonIcon />
+                          </Avatar>
+                          <Typography sx={{ fontFamily: '"Cairo", sans-serif' }}>
+                            {student.name}
                           </Typography>
-                        </>
-                      ) : (
-                        <Typography variant="body2" sx={{ color: theme.palette.text.disabled }}>
-                          غير مسجل
-                        </Typography>
-                      )}
-                    </StyledTableCell>
-                  );
-                })}
-              </StyledTableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                        </Box>
+                      </StyledTableCell>
+                      <StyledTableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <IdIcon color="action" sx={{ ml: 1 }} />
+                          {student.national_id}
+                        </Box>
+                      </StyledTableCell>
+                      <StyledTableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <LevelIcon color="action" sx={{ ml: 1 }} />
+                          {student.level_id}
+                        </Box>
+                      </StyledTableCell>
+                      <StyledTableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <DiplomaIcon color="action" sx={{ ml: 1 }} />
+                          {student.diploma_id}
+                        </Box>
+                      </StyledTableCell>
+                      {/* <StyledTableCell sx={{ textAlign: "center" }}>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
+                          {Object.keys(courses).map(course => (
+                            <Chip
+                              key={course}
+                              label={course}
+                              size="small"
+                              sx={{ fontFamily: '"Cairo", sans-serif' }}
+                            />
+                          ))}
+                        </Box>
+                      </StyledTableCell> */}
+                      <StyledTableCell sx={{ textAlign: "center" }}>
+                        <IconButton 
+                          onClick={() => handleViewDetails(student)}
+                          color="primary"
+                          aria-label="view attendance details"
+                        >
+                          <ViewIcon />
+                        </IconButton>
+                      </StyledTableCell>
+                    </StyledTableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
 
             <StyledTablePagination
               component="div"
@@ -699,6 +686,149 @@ const DailyAttendanceReport = () => {
           </>
         )}
       </Box>
+
+      {/* Attendance Details Dialog */}
+      <Dialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+        fullWidth
+        maxWidth="md"
+        sx={{ '& .MuiDialog-paper': { borderRadius: theme.shape.borderRadius } }}
+      >
+        <DialogTitle sx={{ 
+          backgroundColor: theme.palette.primary.main,
+          color: theme.palette.primary.contrastText,
+          fontFamily: '"Cairo", sans-serif',
+          fontWeight: 700,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <Box>
+            <Typography style={{fontFamily:"cairo"}} variant="h6" component="span">
+              تفاصيل الحضور اليومي
+            </Typography>
+            <Typography style={{fontFamily:"cairo"}} variant="subtitle1" component="div" sx={{ mt: 1 }}>
+              {selectedStudent?.name} - {format(new Date(dateFilter), 'EEEE, d MMMM yyyy', { locale: arSA })}
+            </Typography>
+          </Box>
+          <IconButton onClick={handleCloseDialog} sx={{ color: 'inherit' }}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 3 }}>
+          {selectedStudent && (
+            <Box>
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} md={4}>
+                  <Paper elevation={0} sx={{ p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}>
+                    <Typography variant="subtitle2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                      رقم الهوية
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                      {selectedStudent.national_id}
+                    </Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Paper elevation={0} sx={{ p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}>
+                    <Typography variant="subtitle2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                      المستوى
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                      {selectedStudent.level_id}
+                    </Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Paper elevation={0} sx={{ p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}>
+                    <Typography variant="subtitle2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                      الدبلوم
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                      {selectedStudent.diploma_id}
+                    </Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+
+              <Divider sx={{ my: 3 }} />
+
+              <Typography variant="h6" sx={{ 
+                fontFamily: '"Cairo", sans-serif',
+                mb: 2,
+                color: theme.palette.primary.main,
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                <TodayIcon sx={{ ml: 1 }} />
+                المواد الحاضرة ({getStudentCourses(selectedStudent.national_id).length})
+              </Typography>
+
+              <Box sx={{ 
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                gap: 2,
+                maxHeight: '400px',
+                overflowY: 'auto',
+                p: 1
+              }}>
+                {getStudentCourses(selectedStudent.national_id).map((course, index) => (
+                  <Paper 
+                    key={index} 
+                    elevation={0} 
+                    sx={{ 
+                      p: 2,
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderRadius: theme.shape.borderRadius,
+                      backgroundColor: theme.palette.success.light
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                        {course.course}
+                      </Typography>
+                      <Chip 
+                        label="حاضر"
+                        color="success"
+                        size="small"
+                        sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}
+                      />
+                    </Box>
+                    <Divider sx={{ my: 1 }} />
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                      <Typography variant="body2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                        وقت الحضور:
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                        {course.time}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                        التاريخ:
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                        {format(new Date(course.date), 'EEEE, d MMMM yyyy', { locale: arSA })}
+                      </Typography>
+                    </Box>
+                  </Paper>
+                ))}
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+          <Button 
+            onClick={handleCloseDialog}
+            variant="contained"
+            color="primary"
+            sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}
+          >
+            إغلاق
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
