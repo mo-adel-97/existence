@@ -93,7 +93,7 @@ const MonthlyAttendanceReport = () => {
   const [selectedTab, setSelectedTab] = useState(1);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
-
+const [selectedCourse, setSelectedCourse] = useState(null);
   // Get current month dates
   const monthStart = startOfMonth(new Date(selectedMonth));
   const monthEnd = endOfMonth(new Date(selectedMonth));
@@ -623,127 +623,203 @@ const MonthlyAttendanceReport = () => {
 
       {/* Attendance Details Dialog */}
       <Dialog
-        open={openDialog}
-        onClose={handleCloseDialog}
-        fullWidth
-        maxWidth="md"
-        sx={{ '& .MuiDialog-paper': { borderRadius: theme.shape.borderRadius } }}
-      >
-        <DialogTitle sx={{ 
-          backgroundColor: theme.palette.primary.main,
-          color: theme.palette.primary.contrastText,
+  open={openDialog}
+  onClose={handleCloseDialog}
+  fullWidth
+  maxWidth="md"
+  sx={{ '& .MuiDialog-paper': { borderRadius: theme.shape.borderRadius } }}
+>
+  <DialogTitle sx={{ 
+    backgroundColor: theme.palette.primary.main,
+    color: theme.palette.primary.contrastText,
+    fontFamily: '"Cairo", sans-serif',
+    fontWeight: 700,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  }}>
+    <Box>
+      <Typography style={{fontFamily:"cairo"}} variant="h6" component="span">
+        تفاصيل الحضور الشهري
+      </Typography>
+      <Typography style={{fontFamily:"cairo"}} variant="subtitle1" component="div" sx={{ mt: 1 }}>
+        {selectedStudent?.studentName} - {format(new Date(selectedMonth), 'MMMM yyyy', { locale: arSA })}
+      </Typography>
+    </Box>
+    <IconButton onClick={handleCloseDialog} sx={{ color: 'inherit' }}>
+      <CloseIcon />
+    </IconButton>
+  </DialogTitle>
+  <DialogContent dividers sx={{ p: 3 }}>
+    {selectedStudent && (
+      <Box>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} md={3}>
+            <Paper elevation={0} sx={{ p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}>
+              <Typography variant="subtitle2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                رقم الهوية
+              </Typography>
+              <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                {selectedStudent.nationalId}
+              </Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Paper elevation={0} sx={{ p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}>
+              <Typography variant="subtitle2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                المستوى
+              </Typography>
+              <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                {selectedStudent.levelName}
+              </Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Paper elevation={0} sx={{ p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}>
+              <Typography variant="subtitle2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                الدبلوم
+              </Typography>
+              <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                {selectedStudent.diplomName}
+              </Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Paper elevation={0} sx={{ p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}>
+              <Typography variant="subtitle2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                نسبة الحضور
+              </Typography>
+              <Typography variant="body1" sx={{ 
+                fontFamily: '"Cairo", sans-serif', 
+                fontWeight: 600,
+                color: calculateAttendancePercentage(selectedStudent.nationalId) >= 80 ? theme.palette.success.main :
+                      calculateAttendancePercentage(selectedStudent.nationalId) >= 50 ? theme.palette.warning.main : 
+                      theme.palette.error.main
+              }}>
+                {calculateAttendancePercentage(selectedStudent.nationalId)}%
+              </Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+
+        {/* Course Filter */}
+        <FormControl fullWidth sx={{ mb: 3 }}>
+          <InputLabel sx={{ fontFamily: '"Cairo", sans-serif' }}>اختر المادة</InputLabel>
+          <Select
+            value={selectedCourse || ''}
+            onChange={(e) => setSelectedCourse(e.target.value)}
+            label="اختر المادة"
+            sx={{ fontFamily: '"Cairo", sans-serif' }}
+          >
+            <MenuItem value="" sx={{ fontFamily: '"Cairo", sans-serif' }}>
+              جميع المواد
+            </MenuItem>
+            {Array.from(new Set(
+              attendanceData
+                .filter(a => a.national_id === selectedStudent.nationalId)
+                .map(a => a.course)
+            )).map((course, index) => (
+              <MenuItem key={index} value={course} sx={{ fontFamily: '"Cairo", sans-serif' }}>
+                {course}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <Typography variant="h6" sx={{ 
           fontFamily: '"Cairo", sans-serif',
-          fontWeight: 700,
+          mb: 2,
+          color: theme.palette.primary.main,
           display: 'flex',
-          justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <Box>
-            <Typography variant="h6" component="span">
-              تفاصيل الحضور الشهري
-            </Typography>
-            <Typography variant="subtitle1" component="div" sx={{ mt: 1 }}>
-              {selectedStudent?.studentName} - {format(new Date(selectedMonth), 'MMMM yyyy', { locale: arSA })}
-            </Typography>
-          </Box>
-          <IconButton onClick={handleCloseDialog} sx={{ color: 'inherit' }}>
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers sx={{ p: 3 }}>
-          {selectedStudent && (
-            <Box>
-              <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={4}>
-                  <Paper elevation={0} sx={{ p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}>
-                    <Typography variant="subtitle2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
-                      رقم الهوية
-                    </Typography>
-                    <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
-                      {selectedStudent.nationalId}
-                    </Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Paper elevation={0} sx={{ p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}>
-                    <Typography variant="subtitle2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
-                      المستوى
-                    </Typography>
-                    <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
-                      {selectedStudent.levelName}
-                    </Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Paper elevation={0} sx={{ p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}>
-                    <Typography variant="subtitle2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
-                      الدبلوم
-                    </Typography>
-                    <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
-                      {selectedStudent.diplomName}
-                    </Typography>
-                  </Paper>
-                </Grid>
-              </Grid>
+          <TodayIcon sx={{ ml: 1 }} />
+          {selectedCourse ? `أيام الحضور لمادة ${selectedCourse}` : 'أيام الحضور لجميع المواد'}
+        </Typography>
 
-              <Typography variant="h6" sx={{ 
-                fontFamily: '"Cairo", sans-serif',
-                mb: 2,
-                color: theme.palette.primary.main,
-                display: 'flex',
-                alignItems: 'center'
-              }}>
-                <TodayIcon sx={{ ml: 1 }} />
-                أيام الحضور ({calculateAttendancePercentage(selectedStudent.nationalId)}%)
-              </Typography>
-
-              <Box sx={{ 
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                gap: 2,
-                maxHeight: '400px',
-                overflowY: 'auto',
-                p: 1
-              }}>
-                {getStudentAttendanceDetails(selectedStudent.nationalId).map((day, index) => (
-                  <Paper 
-                    key={index} 
-                    elevation={0} 
-                    sx={{ 
-                      p: 2,
-                      border: `1px solid ${theme.palette.divider}`,
-                      borderRadius: theme.shape.borderRadius,
-                      backgroundColor: day.attended ? theme.palette.success.light : theme.palette.error.light
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif' }}>
-                        {day.formattedDate}
-                      </Typography>
-                      <Chip 
-                        label={day.attended ? "حاضر" : "غائب"}
-                        color={day.attended ? "success" : "error"}
-                        size="small"
-                        sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}
-                      />
-                    </Box>
-                  </Paper>
-                ))}
-              </Box>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
-          <Button 
-            onClick={handleCloseDialog}
-            variant="contained"
-            color="primary"
-            sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}
-          >
-            إغلاق
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Box sx={{ 
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+          gap: 2,
+          maxHeight: '400px',
+          overflowY: 'auto',
+          p: 1
+        }}>
+          {getStudentAttendanceDetails(selectedStudent.nationalId)
+            .filter(day => {
+              if (!selectedCourse) return true;
+              return attendanceData.some(a => 
+                a.national_id === selectedStudent.nationalId && 
+                a.course === selectedCourse &&
+                format(parseISO(a.attendance_date), 'yyyy-MM-dd') === format(day.date, 'yyyy-MM-dd')
+              );
+            })
+            .map((day, index) => {
+              const courseAttendance = attendanceData.find(a => 
+                a.national_id === selectedStudent.nationalId && 
+                format(parseISO(a.attendance_date), 'yyyy-MM-dd') === format(day.date, 'yyyy-MM-dd')
+              );
+              
+              return (
+                <Paper 
+                  key={index} 
+                  elevation={0} 
+                  sx={{ 
+                    p: 2,
+                    border: `1px solid ${theme.palette.divider}`,
+                    borderRadius: theme.shape.borderRadius,
+                    backgroundColor: day.attended ? theme.palette.success.light : theme.palette.error.light
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                      {day.formattedDate}
+                    </Typography>
+                    <Chip 
+                      label={day.attended ? "حاضر" : "غائب"}
+                      color={day.attended ? "success" : "error"}
+                      size="small"
+                      sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}
+                    />
+                  </Box>
+                  {day.attended && courseAttendance && (
+                    <>
+                      {/* <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                        <Typography variant="body2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                          المادة:
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                          {courseAttendance.course}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                          وقت الحضور:
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                          {courseAttendance.attendance_time}
+                        </Typography>
+                      </Box> */}
+                    </>
+                  )}
+                </Paper>
+              );
+            })}
+        </Box>
+      </Box>
+    )}
+  </DialogContent>
+  <DialogActions sx={{ p: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+    <Button 
+      onClick={handleCloseDialog}
+      variant="contained"
+      color="primary"
+      sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}
+    >
+      إغلاق
+    </Button>
+  </DialogActions>
+</Dialog>
     </Box>
   );
 };
