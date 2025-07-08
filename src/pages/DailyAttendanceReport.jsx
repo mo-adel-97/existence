@@ -415,17 +415,34 @@ const DailyAttendanceReport = () => {
     item.national_id.includes(searchTerm)
   );
 
-  const groupedData = filteredData.reduce((acc, item) => {
-    const key = `${item.national_id}-${item.name}`;
-    if (!acc[key]) {
-      acc[key] = {
-        student: item,
+ const groupedData = filteredData.reduce((acc, item) => {
+    if (!acc[item.national_id]) {
+      acc[item.national_id] = {
+        student: {
+          name: item.name,
+          national_id: item.national_id,
+          level_id: item.level_id,
+          diploma_id: item.diploma_id
+        },
         courses: {}
       };
     }
-    acc[key].courses[item.course] = item;
+    
+    // Store each course with its attendance data
+    acc[item.national_id].courses[item.course] = {
+      attendance_time: item.attendance_time,
+      attendance_date: item.attendance_date
+    };
+    
     return acc;
   }, {});
+
+  // Get all unique courses across all students for headers
+  const allCourses = Array.from(
+    new Set(
+      filteredData.map(item => item.course)
+    )
+  ).sort();
 
   const groupedDataArray = Object.values(groupedData);
   const paginatedData = groupedDataArray.slice(
@@ -575,79 +592,96 @@ const DailyAttendanceReport = () => {
           </Paper>
         ) : (
           <>
-            <TableContainer component={Paper} elevation={0} sx={{ 
-              border: `1px solid ${theme.palette.divider}`,
-              borderRadius: theme.shape.borderRadius,
-              overflow: 'hidden'
-            }}>
-              <Table sx={{ minWidth: 750 }} aria-label="attendance table">
-                <TableHead sx={{ bgcolor: theme.palette.grey[100] }}>
-                  <TableRow>
-                    <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>الطالب</StyledTableCell>
-                    <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>رقم الهوية</StyledTableCell>
-                    <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>المستوى</StyledTableCell>
-                    <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>الدبلوم</StyledTableCell>
-                    {Object.keys(groupedDataArray[0]?.courses || {}).map(course => (
-                      <StyledTableCell key={course} sx={{ fontWeight: 700, textAlign: "center" }}>
-                        {course}
-                      </StyledTableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {paginatedData.map(({ student, courses }) => (
-                    <StyledTableRow key={`${student.national_id}-${student.name}`}>
-                      <StyledTableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Avatar
-                            sx={{
-                              bgcolor: theme.palette.primary.light,
-                              width: 36,
-                              height: 36,
-                              mr: 2,
-                              color: theme.palette.primary.dark,
-                            }}
-                          >
-                            <PersonIcon />
-                          </Avatar>
-                          <Typography sx={{ fontFamily: '"Cairo", sans-serif' }}>
-                            {student.name}
-                          </Typography>
-                        </Box>
-                      </StyledTableCell>
-                      <StyledTableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <IdIcon color="action" sx={{ ml: 1 }} />
-                          {student.national_id}
-                        </Box>
-                      </StyledTableCell>
-                      <StyledTableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <LevelIcon color="action" sx={{ ml: 1 }} />
-                          {student.level_id}
-                        </Box>
-                      </StyledTableCell>
-                      <StyledTableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <DiplomaIcon color="action" sx={{ ml: 1 }} />
-                          {student.diploma_id}
-                        </Box>
-                      </StyledTableCell>
-                      {Object.keys(courses).map(course => (
-                        <StyledTableCell key={`${student.national_id}-${course}`} sx={{ textAlign: "center" }}>
+              <TableContainer component={Paper} elevation={0} sx={{ 
+        border: `1px solid ${theme.palette.divider}`,
+        borderRadius: theme.shape.borderRadius,
+        overflow: 'hidden'
+      }}>
+        <Table sx={{ minWidth: 750 }} aria-label="attendance table">
+          <TableHead sx={{ bgcolor: theme.palette.grey[100] }}>
+            <TableRow>
+              <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>الطالب</StyledTableCell>
+              <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>رقم الهوية</StyledTableCell>
+              <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>المستوى</StyledTableCell>
+              <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>الدبلوم</StyledTableCell>
+              {allCourses.map(course => (
+                <StyledTableCell key={course} sx={{ fontWeight: 700, textAlign: "center" }}>
+                  {course}
+                  <Typography variant="caption" display="block" sx={{ fontWeight: 400 }}>
+                    وقت الحضور
+                  </Typography>
+                </StyledTableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {paginatedData.map(({ student, courses }) => (
+              <StyledTableRow key={student.national_id}>
+                <StyledTableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Avatar
+                      sx={{
+                        bgcolor: theme.palette.primary.light,
+                        width: 36,
+                        height: 36,
+                        mr: 2,
+                        color: theme.palette.primary.dark,
+                      }}
+                    >
+                      <PersonIcon />
+                    </Avatar>
+                    <Typography sx={{ fontFamily: '"Cairo", sans-serif' }}>
+                      {student.name}
+                    </Typography>
+                  </Box>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <IdIcon color="action" sx={{ ml: 1 }} />
+                    {student.national_id}
+                  </Box>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <LevelIcon color="action" sx={{ ml: 1 }} />
+                    {student.level_id}
+                  </Box>
+                </StyledTableCell>
+                <StyledTableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <DiplomaIcon color="action" sx={{ ml: 1 }} />
+                    {student.diploma_id}
+                  </Box>
+                </StyledTableCell>
+                
+                {allCourses.map(course => {
+                  const attendance = courses[course];
+                  return (
+                    <StyledTableCell key={`${student.national_id}-${course}`} sx={{ textAlign: "center" }}>
+                      {attendance ? (
+                        <>
                           <Checkbox
-                            checked={attendanceStatus[`${student.national_id}-${course}`] || false}
+                            checked={attendanceStatus[`${student.national_id}-${course}`] !== false}
                             onChange={() => handleAttendanceChange(student.national_id, course)}
                             color="primary"
-                            inputProps={{ 'aria-label': `attendance for ${course}` }}
                           />
-                        </StyledTableCell>
-                      ))}
-                    </StyledTableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                          <Typography variant="body2" sx={{ fontSize: '0.75rem', color: theme.palette.text.secondary }}>
+                            {attendance.attendance_time}
+                          </Typography>
+                        </>
+                      ) : (
+                        <Typography variant="body2" sx={{ color: theme.palette.text.disabled }}>
+                          غير مسجل
+                        </Typography>
+                      )}
+                    </StyledTableCell>
+                  );
+                })}
+              </StyledTableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
             <StyledTablePagination
               component="div"

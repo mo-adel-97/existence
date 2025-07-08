@@ -24,7 +24,12 @@ import {
   Chip,
   Select,
   FormControl,
-  InputLabel
+  InputLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Grid
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -35,7 +40,9 @@ import {
   School as LevelIcon,
   MenuBook as DiplomaIcon,
   Download as DownloadIcon,
-  CalendarMonth as MonthIcon
+  CalendarMonth as MonthIcon,
+  Visibility as ViewIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWithinInterval } from 'date-fns';
 import { arSA } from 'date-fns/locale';
@@ -83,7 +90,9 @@ const MonthlyAttendanceReport = () => {
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(15);
-  const [selectedTab, setSelectedTab] = useState(1); // Assuming 1 is for monthly report
+  const [selectedTab, setSelectedTab] = useState(1);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
 
   // Get current month dates
   const monthStart = startOfMonth(new Date(selectedMonth));
@@ -160,6 +169,16 @@ const MonthlyAttendanceReport = () => {
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
+  };
+
+  const handleViewDetails = (student) => {
+    setSelectedStudent(student);
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setSelectedStudent(null);
   };
 
   const handleExportWord = () => {
@@ -334,6 +353,15 @@ const MonthlyAttendanceReport = () => {
     return Math.round((attendedDays / monthDays.length) * 100);
   };
 
+  // Get attendance details for a student
+  const getStudentAttendanceDetails = (studentId) => {
+    return monthDays.map(day => ({
+      date: day,
+      attended: didStudentAttend(studentId, day),
+      formattedDate: format(day, 'EEEE, d MMMM yyyy', { locale: arSA })
+    }));
+  };
+
   return (
     <Box>
       <AttendanceSidebar selectedTab={selectedTab} setSelectedTab={setSelectedTab} />
@@ -485,7 +513,6 @@ const MonthlyAttendanceReport = () => {
               <TableContainer component={Paper} elevation={0} sx={{ 
                 border: `1px solid ${theme.palette.divider}`,
                 borderRadius: theme.shape.borderRadius,
-                minWidth: 'max-content'
               }}>
                 <Table stickyHeader aria-label="monthly attendance table">
                   <TableHead>
@@ -504,16 +531,7 @@ const MonthlyAttendanceReport = () => {
                       <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>المستوى</StyledTableCell>
                       <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>الدبلوم</StyledTableCell>
                       <StyledTableCell sx={{ fontWeight: 700, textAlign: "center" }}>نسبة الحضور</StyledTableCell>
-                      {monthDays.map(day => (
-                        <StyledTableCell key={day} sx={{ 
-                          fontWeight: 700, 
-                          textAlign: "center",
-                          minWidth: '40px',
-                          p: 1
-                        }}>
-                          {format(day, 'd', { locale: arSA })}
-                        </StyledTableCell>
-                      ))}
+                      <StyledTableCell sx={{ fontWeight: 700, textAlign: "center" }}>تفاصيل الحضور</StyledTableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -570,16 +588,15 @@ const MonthlyAttendanceReport = () => {
                             sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}
                           />
                         </StyledTableCell>
-                        {monthDays.map(day => (
-                          <StyledTableCell key={`${student.nationalId}-${day}`} sx={{ 
-                            textAlign: "center",
-                            p: 0.5,
-                            backgroundColor: didStudentAttend(student.nationalId, day) ? 
-                              theme.palette.success.light : theme.palette.error.light
-                          }}>
-                            {didStudentAttend(student.nationalId, day) ? '✓' : '✗'}
-                          </StyledTableCell>
-                        ))}
+                        <StyledTableCell sx={{ textAlign: 'center' }}>
+                          <IconButton 
+                            onClick={() => handleViewDetails(student)}
+                            color="primary"
+                            aria-label="view attendance details"
+                          >
+                            <ViewIcon />
+                          </IconButton>
+                        </StyledTableCell>
                       </StyledTableRow>
                     ))}
                   </TableBody>
@@ -603,6 +620,130 @@ const MonthlyAttendanceReport = () => {
           </>
         )}
       </Box>
+
+      {/* Attendance Details Dialog */}
+      <Dialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+        fullWidth
+        maxWidth="md"
+        sx={{ '& .MuiDialog-paper': { borderRadius: theme.shape.borderRadius } }}
+      >
+        <DialogTitle sx={{ 
+          backgroundColor: theme.palette.primary.main,
+          color: theme.palette.primary.contrastText,
+          fontFamily: '"Cairo", sans-serif',
+          fontWeight: 700,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <Box>
+            <Typography variant="h6" component="span">
+              تفاصيل الحضور الشهري
+            </Typography>
+            <Typography variant="subtitle1" component="div" sx={{ mt: 1 }}>
+              {selectedStudent?.studentName} - {format(new Date(selectedMonth), 'MMMM yyyy', { locale: arSA })}
+            </Typography>
+          </Box>
+          <IconButton onClick={handleCloseDialog} sx={{ color: 'inherit' }}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 3 }}>
+          {selectedStudent && (
+            <Box>
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} md={4}>
+                  <Paper elevation={0} sx={{ p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}>
+                    <Typography variant="subtitle2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                      رقم الهوية
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                      {selectedStudent.nationalId}
+                    </Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Paper elevation={0} sx={{ p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}>
+                    <Typography variant="subtitle2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                      المستوى
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                      {selectedStudent.levelName}
+                    </Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Paper elevation={0} sx={{ p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: theme.shape.borderRadius }}>
+                    <Typography variant="subtitle2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                      الدبلوم
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                      {selectedStudent.diplomName}
+                    </Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+
+              <Typography variant="h6" sx={{ 
+                fontFamily: '"Cairo", sans-serif',
+                mb: 2,
+                color: theme.palette.primary.main,
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                <TodayIcon sx={{ ml: 1 }} />
+                أيام الحضور ({calculateAttendancePercentage(selectedStudent.nationalId)}%)
+              </Typography>
+
+              <Box sx={{ 
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+                gap: 2,
+                maxHeight: '400px',
+                overflowY: 'auto',
+                p: 1
+              }}>
+                {getStudentAttendanceDetails(selectedStudent.nationalId).map((day, index) => (
+                  <Paper 
+                    key={index} 
+                    elevation={0} 
+                    sx={{ 
+                      p: 2,
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderRadius: theme.shape.borderRadius,
+                      backgroundColor: day.attended ? theme.palette.success.light : theme.palette.error.light
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body1" sx={{ fontFamily: '"Cairo", sans-serif' }}>
+                        {day.formattedDate}
+                      </Typography>
+                      <Chip 
+                        label={day.attended ? "حاضر" : "غائب"}
+                        color={day.attended ? "success" : "error"}
+                        size="small"
+                        sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}
+                      />
+                    </Box>
+                  </Paper>
+                ))}
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+          <Button 
+            onClick={handleCloseDialog}
+            variant="contained"
+            color="primary"
+            sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}
+          >
+            إغلاق
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
