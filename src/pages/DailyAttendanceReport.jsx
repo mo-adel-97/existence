@@ -105,7 +105,7 @@ const DailyAttendanceReport = () => {
   const [rowsPerPage, setRowsPerPage] = useState(15);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
-
+  const [message,setMessage] = useState()
   const fetchBranchName = async () => {
     try {
       const user = JSON.parse(localStorage.getItem('user'));
@@ -447,11 +447,42 @@ const DailyAttendanceReport = () => {
       }));
   };
 
-  const handleSendToWhatsApp = (student) => {
-    if (!student) return;
+const handleSendToWhatsApp = async (student) => {
+  if (!student) return;
+  
+  try {
+    // Fetch additional student data from API
+    const response = await fetch(`http://192.168.50.170:5275/api/student/${student.national_id}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch student data');
+    }
     
+    const studentData = await response.json();
+    let whatsappNumber = null;
+    
+    // Format Saudi phone number properly
+    if (studentData.studentTel) {
+      // Remove all non-digit characters
+      const cleanedNumber = studentData.studentTel.replace(/\D/g, '');
+      
+      // Check if it's a Saudi number and format it
+      if (cleanedNumber.startsWith('966')) {
+        whatsappNumber = `+${cleanedNumber}`;
+      } 
+      else if (cleanedNumber.startsWith('05')) {
+        // Convert local Saudi format (05...) to international (+9665...)
+        whatsappNumber = `+966${cleanedNumber.substring(1)}`;
+      }
+      else if (cleanedNumber.startsWith('5')) {
+        // Handle numbers that might already be missing the 0
+        whatsappNumber = `+966${cleanedNumber}`;
+      }
+    }
+    
+    // Get student courses
     const studentCourses = getStudentCourses(student.national_id);
     
+    // Build the message (same as before)
     let message = `تقرير الحضور اليومي للطالب\n`;
     message += `━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
@@ -460,7 +491,7 @@ const DailyAttendanceReport = () => {
 
     message += `معلومات الطالب\n`;
     message += `———————————————\n`;
-    message += `الاسم الكامل:* ${student.name}\n`;
+    message += `الاسم الكامل:* ${studentData.studentName || student.name}\n`;
     message += `رقم الهوية الوطنية: ${student.national_id}\n`;
     message += `المستوى التدريبي: ${student.level_id}\n`;
     message += `البرنامج / الدبلوم: ${student.diploma_id}\n\n`;
@@ -485,14 +516,26 @@ const DailyAttendanceReport = () => {
 
     message += `ملاحظة: تم إعداد هذا التقرير تلقائيًا من خلال نظام إدارة الحضور.\n`;
 
-    message += `\n━━━━━━━━━━━━━━━━━━━━━━━`;
+    message += `\n━━━━━━━━━━━━━━━━━━━━━━━━`;
 
     const encodedMessage = encodeURIComponent(message);
     
-    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+    // Create WhatsApp URL with properly formatted phone number
+    const whatsappUrl = whatsappNumber 
+      ? `https://wa.me/${whatsappNumber}?text=${encodedMessage}`
+      : `https://wa.me/?text=${encodedMessage}`;
     
     window.open(whatsappUrl, '_blank');
-  };
+  } catch (error) {
+    console.error('Error sending to WhatsApp:', error);
+    // Fallback to original behavior if API fails
+    const studentCourses = getStudentCourses(student.national_id);
+    // ... (rest of original message building code)
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+  }
+};
 
   return (
     <Box>
