@@ -916,20 +916,20 @@ const handleSendToWhatsApp = async (student) => {
                         {day.attended && courseAttendance && (
                           <>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                              <Typography variant="body2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                              {/* <Typography variant="body2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
                                 المادة:
-                              </Typography>
-                              <Typography variant="body2" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
+                              </Typography> */}
+                              {/* <Typography variant="body2" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
                                 {courseAttendance.course}
-                              </Typography>
+                              </Typography> */}
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant="body2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
+                              {/* <Typography variant="body2" sx={{ fontFamily: '"Cairo", sans-serif', color: theme.palette.text.secondary }}>
                                 وقت الحضور:
                               </Typography>
                               <Typography variant="body2" sx={{ fontFamily: '"Cairo", sans-serif', fontWeight: 600 }}>
                                 {courseAttendance.attendance_time}
-                              </Typography>
+                              </Typography> */}
                             </Box>
                           </>
                         )}
