@@ -37,7 +37,8 @@ import {
   MenuBook as DiplomaIcon,
   Visibility as ViewIcon,
   Download as DownloadIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  WhatsApp as WhatsAppIcon 
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { arSA } from 'date-fns/locale';
@@ -446,6 +447,53 @@ const DailyAttendanceReport = () => {
       }));
   };
 
+  const handleSendToWhatsApp = (student) => {
+    if (!student) return;
+    
+    const studentCourses = getStudentCourses(student.national_id);
+    
+    let message = `تقرير الحضور اليومي للطالب\n`;
+    message += `━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+    message += `التاريخ: ${format(new Date(dateFilter), 'EEEE، d MMMM yyyy', { locale: arSA })}\n`;
+    message += `الفرع التدريبي: ${branchName}\n\n`;
+
+    message += `معلومات الطالب\n`;
+    message += `———————————————\n`;
+    message += `الاسم الكامل:* ${student.name}\n`;
+    message += `رقم الهوية الوطنية: ${student.national_id}\n`;
+    message += `المستوى التدريبي: ${student.level_id}\n`;
+    message += `البرنامج / الدبلوم: ${student.diploma_id}\n\n`;
+
+    message += ` سجل الحضور التفصيلي \n`;
+    message += `———————————————\n`;
+
+    if (studentCourses.length === 0) {
+      message += ` لا توجد سجلات حضور لهذا اليوم.\n\n`;
+    } else {
+      studentCourses.forEach((course, index) => {
+        message += `${index + 1}. ${course.course}\n`;
+        message += `   وقت الحضور: ${course.time}\n`;
+        message += `  تاريخ المادة: ${format(new Date(course.date), 'dd/MM/yyyy', { locale: arSA })}\n\n`;
+      });
+    }
+
+    message += `ملخص الحضور العام\n`;
+    message += `———————————————\n`;
+    message += ` عدد المواد الحاضرة: ${studentCourses.length}\n`;
+    message += ` حالة الحضور:* ${studentCourses.length}\n\n`;
+
+    message += `ملاحظة: تم إعداد هذا التقرير تلقائيًا من خلال نظام إدارة الحضور.\n`;
+
+    message += `\n━━━━━━━━━━━━━━━━━━━━━━━`;
+
+    const encodedMessage = encodeURIComponent(message);
+    
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+    
+    window.open(whatsappUrl, '_blank');
+  };
+
   return (
     <Box>
       <AttendanceSidebar selectedTab={selectedTab} setSelectedTab={setSelectedTab} />
@@ -600,7 +648,6 @@ const DailyAttendanceReport = () => {
                     <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>رقم الهوية</StyledTableCell>
                     <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>المستوى</StyledTableCell>
                     <StyledTableCell sx={{ fontWeight: 700, textAlign: "right" }}>الدبلوم</StyledTableCell>
-                    {/* <StyledTableCell sx={{ fontWeight: 700, textAlign: "center" }}>المواد الحاضرة</StyledTableCell> */}
                     <StyledTableCell sx={{ fontWeight: 700, textAlign: "center" }}>تفاصيل الحضور</StyledTableCell>
                   </TableRow>
                 </TableHead>
@@ -643,18 +690,6 @@ const DailyAttendanceReport = () => {
                           {student.diploma_id}
                         </Box>
                       </StyledTableCell>
-                      {/* <StyledTableCell sx={{ textAlign: "center" }}>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
-                          {Object.keys(courses).map(course => (
-                            <Chip
-                              key={course}
-                              label={course}
-                              size="small"
-                              sx={{ fontFamily: '"Cairo", sans-serif' }}
-                            />
-                          ))}
-                        </Box>
-                      </StyledTableCell> */}
                       <StyledTableCell sx={{ textAlign: "center" }}>
                         <IconButton 
                           onClick={() => handleViewDetails(student)}
@@ -818,7 +853,24 @@ const DailyAttendanceReport = () => {
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+        <DialogActions sx={{ p: 2, borderTop: `1px solid ${theme.palette.divider}`, display: 'flex', justifyContent: 'space-between' }}>
+          <Button 
+            onClick={() => handleSendToWhatsApp(selectedStudent)}
+            variant="contained"
+            color="success"
+            startIcon={<WhatsAppIcon />}
+            sx={{ 
+              fontFamily: '"Cairo", sans-serif', 
+              fontWeight: 600,
+              backgroundColor: '#25D366',
+              '&:hover': {
+                backgroundColor: '#1DA851'
+              }
+            }}
+          >
+            إرسال للواتساب
+          </Button>
+          
           <Button 
             onClick={handleCloseDialog}
             variant="contained"
