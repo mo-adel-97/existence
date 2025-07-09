@@ -37,6 +37,8 @@ const AttendanceDialog = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [noBranchData, setNoBranchData] = useState(false);
+  const [availableSubjects, setAvailableSubjects] = useState([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
 
   useEffect(() => {
     if (open && studentData?.accountGuid) {
@@ -46,8 +48,16 @@ const AttendanceDialog = ({
       setStudyInfo([]);
       setNoBranchData(false);
       setError(null);
+      setAvailableSubjects([]);
     }
   }, [open, studentData]);
+
+  // Fetch subjects when diploma changes
+  useEffect(() => {
+    if (attendanceData.diploma && open) {
+      fetchSubjectsForDiploma(attendanceData.diploma);
+    }
+  }, [attendanceData.diploma, open]);
 
   const fetchStudentStudyInfo = async () => {
     try {
@@ -97,6 +107,50 @@ const AttendanceDialog = ({
       console.error('Error fetching study info:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSubjectsForDiploma = async (diplomaName) => {
+    try {
+      setLoadingSubjects(true);
+      
+      const response = await fetch('https://filesregsiteration.sstli.com/get_teaching_data.php');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch teaching data');
+      }
+      
+      const data = await response.json();
+      
+      // Find subjects for the selected diploma
+      const subjects = [];
+      data.forEach(trainer => {
+        trainer.diplomas.forEach(diploma => {
+          if (diploma.diploma_name === diplomaName) {
+            diploma.subjects.forEach(subject => {
+              if (!subjects.includes(subject.subject_name)) {
+                subjects.push(subject.subject_name);
+              }
+            });
+          }
+        });
+      });
+      
+      setAvailableSubjects(subjects);
+      
+      // Clear the course field when diploma changes
+      handleAttendanceChange({
+        target: {
+          name: 'course',
+          value: ''
+        }
+      });
+      
+    } catch (err) {
+      console.error('Error fetching subjects:', err);
+      setAvailableSubjects([]);
+    } finally {
+      setLoadingSubjects(false);
     }
   };
 
@@ -396,12 +450,20 @@ const AttendanceDialog = ({
             
             <Grid item xs={12}>
               <FormControl style={{ minWidth: "200px" }} fullWidth>
-                <TextField
+                <InputLabel sx={{ 
+                  fontFamily: '"Cairo", sans-serif',
+                  fontSize: "1rem",
+                  color: "#555"
+                }}>
+                  المقرر
+                </InputLabel>
+                <Select
                   name="course"
                   value={attendanceData.course}
                   onChange={handleAttendanceChange}
                   label="المقرر"
                   required
+                  disabled={loadingSubjects || availableSubjects.length === 0}
                   sx={{
                     fontFamily: '"Cairo", sans-serif',
                     borderRadius: "10px",
@@ -412,7 +474,28 @@ const AttendanceDialog = ({
                       borderColor: "#1976d2"
                     }
                   }}
-                />
+                >
+                  {loadingSubjects ? (
+                    <MenuItem disabled>
+                      <CircularProgress size={20} sx={{ mr: 1 }} />
+                      جاري تحميل المقررات...
+                    </MenuItem>
+                  ) : availableSubjects.length === 0 ? (
+                    <MenuItem disabled>
+                      لا توجد مقررات متاحة لهذا الدبلوم
+                    </MenuItem>
+                  ) : (
+                    availableSubjects.map((subject) => (
+                      <MenuItem 
+                        key={subject} 
+                        value={subject}
+                        sx={{ fontFamily: '"Cairo", sans-serif' }}
+                      >
+                        {subject}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
               </FormControl>
             </Grid>
             
@@ -563,45 +646,44 @@ const AttendanceDialog = ({
         </Button>
         
         {!noBranchData && (
-  submitting ? (
-    <CircularProgress
-      size={32}
-      sx={{ color: "#4caf50" }}
-    />
-  ) : (
-    <Button
-      onClick={handleAttendanceSubmit}
-      variant="contained"
-      color="primary"
-      startIcon={<Check />}
-      disabled={!attendanceData.confirmed}
-      sx={{
-        borderRadius: "10px",
-        padding: "12px 24px",
-        fontWeight: 600,
-        fontFamily: '"Cairo", sans-serif',
-        fontSize: "1rem",
-        background: "linear-gradient(45deg, #4caf50, #2e7d32)",
-        boxShadow: "0 4px 8px rgba(76, 175, 80, 0.2)",
-        "& .MuiButton-startIcon": {
-          marginRight: "8px",
-          marginLeft: "0px"
-        },
-        "&:hover": {
-          background: "linear-gradient(45deg, #388e3c, #1b5e20)",
-          boxShadow: "0 6px 12px rgba(76, 175, 80, 0.3)"
-        },
-        "&.Mui-disabled": {
-          background: "#e0e0e0",
-          color: "#9e9e9e"
-        }
-      }}
-    >
-      تأكيد الحضور
-    </Button>
-  )
-)}
-
+          submitting ? (
+            <CircularProgress
+              size={32}
+              sx={{ color: "#4caf50" }}
+            />
+          ) : (
+            <Button
+              onClick={handleAttendanceSubmit}
+              variant="contained"
+              color="primary"
+              startIcon={<Check />}
+              disabled={!attendanceData.confirmed}
+              sx={{
+                borderRadius: "10px",
+                padding: "12px 24px",
+                fontWeight: 600,
+                fontFamily: '"Cairo", sans-serif',
+                fontSize: "1rem",
+                background: "linear-gradient(45deg, #4caf50, #2e7d32)",
+                boxShadow: "0 4px 8px rgba(76, 175, 80, 0.2)",
+                "& .MuiButton-startIcon": {
+                  marginRight: "8px",
+                  marginLeft: "0px"
+                },
+                "&:hover": {
+                  background: "linear-gradient(45deg, #388e3c, #1b5e20)",
+                  boxShadow: "0 6px 12px rgba(76, 175, 80, 0.3)"
+                },
+                "&.Mui-disabled": {
+                  background: "#e0e0e0",
+                  color: "#9e9e9e"
+                }
+              }}
+            >
+              تأكيد الحضور
+            </Button>
+          )
+        )}
       </DialogActions>
     </Dialog>
   );

@@ -54,11 +54,11 @@ const AttendanceSidebar = () => {
   const selectedTab = location.pathname === "/attendance" ? 0 : 
                      location.pathname === "/daily" ? 1 : 
                      location.pathname === "/monthly" ? 2 :
-                     location.pathname === "/courses" ? 3 :
+                     location.pathname === "/reportForCourses" ? 3 :
                      location.pathname === "/TeachingData" ? 4 : 0;
 
   const handleTabChange = (_, newValue) => {
-    const routes = ["/attendance", "/daily", "/monthly", "/courses", "/TeachingData"];
+    const routes = ["/attendance", "/daily", "/monthly", "/reportForCourses", "/TeachingData"];
     navigate(routes[newValue]);
   };
 

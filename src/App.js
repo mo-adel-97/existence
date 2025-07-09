@@ -7,7 +7,7 @@ import "./App.css"
 import DailyAttendanceReport from "./pages/DailyAttendanceReport";
 import MonthlyAttendanceReport from "./pages/MonthlyAttendanceReport";
 import TeachingForm from "./pages/TeachingForm";
-
+import ReportForCourses from "./pages/ReportForCourses";
 // Private Route Component
 const PrivateRoute = ({ children }) => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -54,7 +54,7 @@ function App() {
               </PrivateRoute>
             } 
           />
-            <Route 
+          <Route 
             path="/TeachingData" 
             element={
               <PrivateRoute>
@@ -62,7 +62,13 @@ function App() {
               </PrivateRoute>
             } 
           />
-          
+          <Route 
+            path="/reportForCourses" element={
+              <PrivateRoute>
+                <ReportForCourses />
+              </PrivateRoute>
+            }
+          />
           {/* Fallback route */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
