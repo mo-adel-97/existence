@@ -6,6 +6,7 @@ import LoginPage from './pages/login';
 import "./App.css"
 import DailyAttendanceReport from "./pages/DailyAttendanceReport";
 import MonthlyAttendanceReport from "./pages/MonthlyAttendanceReport";
+import TeachingForm from "./pages/TeachingForm";
 
 // Private Route Component
 const PrivateRoute = ({ children }) => {
@@ -50,6 +51,14 @@ function App() {
             element={
               <PrivateRoute>
                 <MonthlyAttendanceReport />
+              </PrivateRoute>
+            } 
+          />
+            <Route 
+            path="/TeachingData" 
+            element={
+              <PrivateRoute>
+                <TeachingForm />
               </PrivateRoute>
             } 
           />

@@ -15,7 +15,8 @@ import {
   CalendarMonth as MonthlyIcon,
   Class as CourseIcon,
   ManageAccounts as ManageAccountsIcon,
-  Logout as LogoutIcon
+  Logout as LogoutIcon,
+  AddCircleOutline as AddCourseIcon
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -26,8 +27,8 @@ const StyledTab = styled(Tab)(({ theme }) => ({
   padding: theme.spacing(1.5, 2),
   margin: theme.spacing(0.5, 1.5),
   borderRadius: theme.shape.borderRadius,
-  flexDirection: 'row', // Reverse icon and text direction
-  justifyContent: 'flex-start', // Align to right
+  flexDirection: 'row',
+  justifyContent: 'flex-start',
   gap: theme.spacing(2),
   transition: 'all 0.2s ease-out',
   '&.Mui-selected': {
@@ -53,10 +54,11 @@ const AttendanceSidebar = () => {
   const selectedTab = location.pathname === "/attendance" ? 0 : 
                      location.pathname === "/daily" ? 1 : 
                      location.pathname === "/monthly" ? 2 :
-                     location.pathname === "/courses" ? 3 : 0;
+                     location.pathname === "/courses" ? 3 :
+                     location.pathname === "/TeachingData" ? 4 : 0;
 
   const handleTabChange = (_, newValue) => {
-    const routes = ["/attendance", "/daily", "/monthly", "/courses"];
+    const routes = ["/attendance", "/daily", "/monthly", "/courses", "/TeachingData"];
     navigate(routes[newValue]);
   };
 
@@ -180,6 +182,20 @@ const AttendanceSidebar = () => {
               </Typography>
             }
             icon={<CourseIcon fontSize="small" />}
+          />
+          <StyledTab
+            label={
+              <Typography 
+                variant="subtitle1"
+                fontFamily='"Cairo", sans-serif'
+                sx={{ 
+                  fontSize: '0.9rem',
+                }}
+              >
+                اضافة مقررات دراسية
+              </Typography>
+            }
+            icon={<AddCourseIcon fontSize="small" />}
           />
         </Tabs>
       </Box>
